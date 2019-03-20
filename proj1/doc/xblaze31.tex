@@ -1,0 +1,41 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[czech]{babel}
+\usepackage[left=2.5cm,text={16cm, 24cm},top=3cm]{geometry}
+\usepackage{amsmath}
+
+\begin{document}
+\begin{center}
+	\begin{large}\textbf{Bucket Sort}\end{large} \\
+	\vspace{0.4cm}
+	Tomáš Blažek (xblaze31) \\
+	\textit{PRL - Paralelní a Distribuované algoritmy} \\
+	\textit{Fakulta Informačních Technologií, Brno} \\
+\end{center}
+
+
+
+\section{Rozbor a analýza algoritmu}
+
+Algoritmus bucket sort je řadící algoritmus, který pracuje se s stromem procesorů. Počet použitý procesorů je závislý od počtu řazených prvků. Procesory se dále dělí na listové a nelistové. Množtví použitých listových procesorů \texttt{m} se vypočítá jako m=log(n), přičemž m se buď rovná k-té mocnině dvou nebo se dané m zarovná na nejbližší vyšší mocninu dvou. Dále pak celkový počet procesorů \texttt{p} v celém stromě procesorů je roven p = 2m-1. Algoritmus pracuje na principu pracuje na principu, že se rozdělí řazené prvky rovnoměrně mezi jednotlivé listové procesory, přičemž každý listový procesor načítá n/m prvků (m=log n) tedy O(n/log(n)). Každý listový procesor seřadí svoji posloupnost čísel optimalním sekvenčním algoritmem O(n/m*log(n/m)) = O(n*log(n)). Seřezené posloupnosti zašlou listové procesory svému rodičovskému procesoru a ten obě seřazene posloupnosti spojí do jedné seřazené posloupnosti O(n). Tento proces se opakuje do té doby než se výsledek propaguje až do kořenového procesoru, to vede na počet iterací  i = log(m)-1. To by ale znamenalo, že by časová složitost byla O(n.log n). Musíme tedy zohlednit i ten fakt, že v každé iteraci se řadí $n/(2^j)$ prvků pro j = 1 až do j = i. To nám dává posloupnost 1 + 1/2 + 1/4 +1/8 +... = 2n, což patří do O(n). Kořenový procesor následně uloží celou seřazenou posloupnost prvků do paměti O(n). 
+
+
+\begin{equation} \label{eq1}
+\begin{split}
+\text{Časová složitost: }t(n) &= O(n/log n) + O(n) + O(n) = O(n)\\
+\text{Prostorová složitost: }p(n) &= O(log n)\\
+\text{Celková cena: }c(n) &= O(n) * O(log n) = O(n.log n)
+\end{split}
+\end{equation}
+
+\textit{Tedy cena je optimální, jelikož odpovídá časové náročnosti optimalního sekvenčního řadícího algoritmu}
+
+\section{Implementace}
+Program je implementován v jazyce C++ s využitím knihovny Open MPI. Nejprve se inicializuje MPI komunikace a informace o tom kolik procesů běží a každý proces si zjistí svoje identifikační číslo (id). Nejprve kořenový procesor načte obsah vstupního souboru numbers, ze kterého získá řazené prvky a uloží je do paměti. Následně rozešle informace ohledně množství listových procesorů m a velikosti kyblíku (bucket) s, aby listové procesory věděli kolik dat mají přijmout. Dále kořenový procesor rozešle řazené prvky rovnoměrně mezi listové procesory. Ty pomocí funkce std::sort ze standartní knihovny seřadí svoje prvky a uloží je do vektoru. Následně všechny listové procesory pošlou svým rodičovským procesorům svoje seřazené posloupnosti a ty je přijmou a spojí je do jedné seřazené posloupnoti pomocí knihovní funkce std::merge. Pokud se nejedná o kořenový procesor, tak se proces zaslání seřazených poslouností rodičovskému procesorů a následného spojení opakuje do té doby, dokud se posloupnost nedostane do kořenového procesoru, kde se po spojení nachází již celá seřazená posloupnost prvků. Kořenový procesor následně vypíše prvky na standartní výstup (stdout).
+
+\section{Experimenty}
+
+\section{Komunikační protokol}
+
+\section{Závěr}
+\end{document}
