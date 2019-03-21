@@ -1,9 +1,8 @@
 filename=xblaze31
 
 ${filename}.pdf:${filename}.tex
-	latex ${filename}.tex
-	dvips ${filename}.dvi
-	ps2pdf ${filename}.ps
-
+	pdflatex ${filename}.tex
+	pdflatex ${filename}.tex
+	
 clean:
 	rm -rf *.aux *.log *.dvi *.ps
