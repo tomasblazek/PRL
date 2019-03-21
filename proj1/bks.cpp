@@ -1,7 +1,8 @@
-/*
+/**
+ * subject: PRL
  * algorithm: bucket sort
  * author: xblaze31
- *
+ * date: 21-03-2019
  */
 
 #include <mpi.h>
@@ -10,15 +11,32 @@
 #include <vector>           
 #include <algorithm>    /* sort */
 #include <math.h>       /* log2 */
+#include <ctime>
 
 using namespace std;
 
 #define TAG 0
+#define ANALYZE_TIME 0 // set 1 to analyze time complexity otherwise 0
 
+/**
+ * @brief      Determines if less.
+ *
+ * @param[in]  a     A value
+ * @param[in]  b     B value
+ *
+ * @return     True if less, False otherwise.
+ */
 bool isLess(int a, int b){
     return a < b;
 }
 
+/**
+ * @brief      Gets the parent index.
+ *
+ * @param[in]  child  The child id
+ *
+ * @return     The parent index.
+ */
 int getParentIndex(int child){
     if (child % 2 == 1){
         return (child - 1) / 2;
@@ -30,6 +48,13 @@ int getParentIndex(int child){
     }
 }
 
+/**
+ * @brief      Raise float number to higher pow of 2.
+ *
+ * @param[in]  x     Float number
+ *
+ * @return     Integer what is pow of 2
+ */
 int raiseToPowOf2(double x){
     if(x < 0){
         return -1;
@@ -45,6 +70,13 @@ int raiseToPowOf2(double x){
     return std::pow(2,i);
 }
 
+/**
+ * @brief      Gets the first element index of tree level.
+ *
+ * @param[in]  level  The level
+ *
+ * @return     The first element index of tree level.
+ */
 int getFirstElemIndexOfTreeLevel(int level){
     int index = 0;
     for(int i = 0; i < level; i++){
@@ -54,67 +86,84 @@ int getFirstElemIndexOfTreeLevel(int level){
 }
 
 int main(int argc, char *argv[]){
-    int numProcs;               //pocet procesoru
-    int myid;                   //muj rank
-    int neighnumber;            //hodnota souseda
-    int mynumber;               //moje hodnota
-    MPI_Status stat;            //struct- obsahuje kod- source, tag, error
+    //Values for testing time 
+    double t1,t2;
+
+    int numProcs;               //count of processors
+    int myid;                   //my rank
+    MPI_Status stat;            //struct- source, tag, error
 
     //MPI INIT
-    MPI_Init(&argc,&argv);                          // inicializace MPI 
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);       // zjistíme, kolik procesů běží 
-    MPI_Comm_rank(MPI_COMM_WORLD, &myid);           // zjistíme id svého procesu 
-
-
+    MPI_Init(&argc,&argv);                          // initialization of MPI
+    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);       // count of running processes
+    MPI_Comm_rank(MPI_COMM_WORLD, &myid);           // get id of process
 
     std::vector<int> vectorData;                    
     int numLeafProcs;
     int bucketSize;
 
-    //NACTENI SOUBORU
-    /* -proc s rankem 0 nacita vsechny hodnoty
-     * -postupne rozesle jednotlive hodnoty vsem i sobe
-    */
+    // Read from file
+    // Root procesor load numbers from file and send them to leaf procesors
     if(myid == 0){
-        char input[] = "numbers";                          //jmeno souboru    
-        int number;                                     //hodnota pri nacitani souboru
-        fstream fin;                                    //cteni ze souboru
+        char input[] = "numbers";                       // name of file   
+        int number;                                     // number value after load
+        fstream fin;                                    // read from file
         fin.open(input, ios::in);  
 
         while(fin.good()){
             number= fin.get();
             if(!fin.good()){   
-                break;                      //nacte i eof, takze vyskocim
+                break;                      // load eof and leave
             }
-            //cout<<dest<<"("<<count <<"):"<<number<<endl;             //kdo dostane kere cislo
+
+            if(vectorData.empty()){ // Print input numbers to line
+                cout << number;
+            } else {
+                cout << " " << number;
+            }
             vectorData.push_back(number);
         }
+        cout << endl; // end line of input numbers
 
         int countOfNumbers = vectorData.size();
 
+        // Sort for only one procesor
+        if (numProcs == 1){
+            t1 = MPI_Wtime();
+
+            std::sort (vectorData.begin(), vectorData.end(), isLess);
+            for(int i = 0; i < countOfNumbers; i++){
+                cout << vectorData[i] << endl;
+            }
+
+            t2 = MPI_Wtime();
+            if(ANALYZE_TIME){
+            printf("MPI_Wtime measured time: %1.4fms\n", (t2-t1)*1000);
+            }
+
+            MPI_Finalize(); 
+            return 0; // end with success
+        }
+
         numLeafProcs = raiseToPowOf2(std::log2(countOfNumbers));
         bucketSize = countOfNumbers/numLeafProcs;
-//        int maxNumbers = std::pow(2,numLeafProcs);
 
 
         if(countOfNumbers%numLeafProcs != 0){
             bucketSize++;
         }
-        // cout<<numLeafProcs<<endl;
-        // cout<<maxNumbers<<endl;
-        // cout<<bucketSize<<endl;
-        // rozeslat bucket size
 
         std::vector<int> metadataVector;
         metadataVector.push_back(numLeafProcs);
         metadataVector.push_back(bucketSize);
 
+        t1 = MPI_Wtime();
         for (int i = 0; i < numProcs; i++){
             MPI_Send(&metadataVector[0], 2, MPI_INT, i, TAG, MPI_COMM_WORLD);
         }
 
 
-        // Doplneni chybejicich cisel do bucketu -1
+        // Fill up buckets with -1 numbers which should be deleted at the end of sort!
         while(vectorData.size() < numLeafProcs * bucketSize){
             vectorData.push_back(-1);
         }
@@ -122,9 +171,8 @@ int main(int argc, char *argv[]){
         int dest = numProcs - 1; 
         std::vector<int> vectorToSend;
 
-        // Rozeslani cisel listovym procesorům
+        // Send data to leaf procesors
         for (int i = 0; i < vectorData.size(); i++){
-            cout<<dest<<"("<<i<<"):"<<vectorData[i]<<endl;
             vectorToSend.push_back(vectorData[i]);
             if(((i+1)%bucketSize) == 0){    
                 MPI_Send(&vectorToSend[0], bucketSize, MPI_INT, dest, TAG, MPI_COMM_WORLD); //buffer,velikost,typ,rank prijemce,tag,komunikacni skupina
@@ -135,36 +183,23 @@ int main(int argc, char *argv[]){
 
     }
 
+    // Recieve metadata
     vectorData.resize(2);
     MPI_Recv(&vectorData[0], 2, MPI_INT, 0, TAG, MPI_COMM_WORLD, &stat); //buffer,velikost,typ,rank odesilatele,tag, skupina, stat
     numLeafProcs = vectorData[0];
     bucketSize = vectorData[1];
 
-    //PRIJETI HODNOTY CISLA
-    //vsechny leaf procesory prijmou hodnotu a zahlasi ji
-
-
-
+    // SORT ALGORITHM
+    // Sort algorithm - Sort in leafs
     if(numProcs - numLeafProcs <= myid && myid < numProcs){
         vectorData.resize(bucketSize);
         MPI_Recv(&vectorData[0], bucketSize, MPI_INT, 0, TAG, MPI_COMM_WORLD, &stat); //buffer,velikost,typ,rank odesilatele,tag, skupina, stat
-    }
 
-
-    // // RAZENI
-    if(numProcs - numLeafProcs <= myid && myid < numProcs){
-        for (int i = 0; i < numLeafProcs; i++){
-            std::sort (vectorData.begin(), vectorData.end(), isLess);
-        }
-        //cout <<"Proc("<<myid<<") Send data to Index parent: "<<getParentIndex(myid)<<endl;
+        std::sort (vectorData.begin(), vectorData.end(), isLess);
+        
         MPI_Send(&vectorData[0], bucketSize, MPI_INT, getParentIndex(myid), TAG, MPI_COMM_WORLD); //buffer,velikost,typ,rank prijemce,tag,komunikacni skupina
     }
-
-    // if((numProcs - numLeafProcs) <= myid && myid < numProcs){
-    //     for(int i=0; i<vectorData.size(); i++){
-    //         cout<<"i am:"<<myid<<" my number is:"<<vectorData[i]<<endl<<std::flush;
-    //     }
-    // }
+       
 
     int resizer;
     int levelMax = log2(numLeafProcs);
@@ -174,36 +209,32 @@ int main(int argc, char *argv[]){
     std::vector<int> vectorData1;
     std::vector<int> vectorData2;
 
+    // Sort algorithm - Merging
     for(int j = 1; j <= levelMax; j++){
         level = levelMax - j;
         firstProcIndex = getFirstElemIndexOfTreeLevel(level); 
         if (firstProcIndex <= myid && myid < firstProcIndex + std::pow(2,level)){
-            //cout<<"Recieve - procTree: "<<myid<<endl;
-
             resizer = std::pow(2,j-1) * bucketSize;
             vectorData1.resize(resizer);
             vectorData2.resize(resizer);
-
 
             MPI_Recv(&vectorData1[0], resizer, MPI_INT, myid*2+1, TAG, MPI_COMM_WORLD, &stat); //buffer,velikost,typ,rank odesilatele,tag, skupina, stat
             MPI_Recv(&vectorData2[0], resizer, MPI_INT, myid*2+2, TAG, MPI_COMM_WORLD, &stat); //buffer,velikost,typ,rank odesilatele,tag, skupina, stat
         
             vectorData.clear();
             std::merge(vectorData1.begin(), vectorData1.end(), vectorData2.begin(), vectorData2.end(), std::back_inserter(vectorData));
-            for(int i=0; i<vectorData.size(); i++){
-                //cout<<"merged:"<<myid<<" my number("<< i<<") is:"<<vectorData[i]<<endl<<std::flush;
-            }
-            //cout<<"Send to Merge by: " << myid << " to:"<< getParentIndex(myid)<<endl<<std::flush;
+
             if(myid != 0){
-                //cout<<"Send to Merge by: " << myid << " to:"<< getParentIndex(myid)<<endl<<std::flush;
                 MPI_Send(&vectorData[0], 2*resizer, MPI_INT, getParentIndex(myid), TAG, MPI_COMM_WORLD); //buffer,velikost,typ,rank prijemce,tag,komunikacni skupina
             }
         }
     }
 
-    // //FINALNI DISTRIBUCE VYSLEDKU-----------------------------------
+    t2 = MPI_Wtime();
+
+    // Final distribution of result
     if (myid == 0){
-        int eraseNegativesCount = 0; //pocet nevalidnich prvku -1 ze zacatku seznamu
+        int eraseNegativesCount = 0; // count of nonvalid elements (-1) in vector
         for(int i=0; i<vectorData.size(); i++){
             if (vectorData[i] < 0)
                 eraseNegativesCount++;
@@ -212,7 +243,11 @@ int main(int argc, char *argv[]){
         vectorData.erase(vectorData.begin(),vectorData.begin()+eraseNegativesCount);
 
         for(int i=0; i<vectorData.size(); i++){
-            cout<<"FINAL:"<<myid<<" my number("<< i<<") is:"<<vectorData[i]<<endl<<std::flush;
+            cout<<vectorData[i]<<endl;
+        }
+
+        if(ANALYZE_TIME){
+        printf("MPI_Wtime measured time: %1.4fms\n", (t2-t1)*1000);
         }
     }
 
@@ -220,4 +255,4 @@ int main(int argc, char *argv[]){
     MPI_Finalize(); 
     return 0;
 
-}//main
+}
