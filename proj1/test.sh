@@ -2,16 +2,21 @@
 
 FILENAME="bks"
 
-#pocet cisel bud zadam nebo 16 :)
+#pocet cisel bud zadam nebo 16
 if [ $# -lt 1 ];then 
     numbers=16;
 else
-    numbers=$1;
+	#kontrola validity vstupu
+	if [[ $1 =~ ^[1-9][0-9]*$ ]]; then
+		numbers=$1;
+	else
+		echo "Error: Invalid argument! (Unsigned integer value higher than zero required)"
+		exit 1
+	fi;
 fi;
 
 
 #preprocesing pro algoritmus - vypocet procesoru
-
 if [ "$numbers" -gt 0 ];then
 	logNumber=`echo "l($numbers)/l(2)" | bc -l`
 	logNumber=`python3 -c "import math; print(math.ceil($logNumber))"`
@@ -27,7 +32,7 @@ if [ "$numbers" -gt 0 ];then
 fi;
 
 
-#preklad cpp zdrojaku
+#preklad cpp
 mpic++ --prefix /usr/local/share/OpenMPI -o ${FILENAME} ${FILENAME}.cpp
 
 
