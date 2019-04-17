@@ -3,24 +3,26 @@
 FILENAME="vuv"
 
 #pocet procesorů bud zadam nebo 16
-if [ $# -lt 1 ];then 
-    p=16;
-else
-	#kontrola validity vstupu
-	if [[ $1 =~ ^[1-9][0-9]*$ ]]; then
-		p=$1;
-	else
-		echo "Error: Invalid argument! (Unsigned integer value higher than zero required)"
-		exit 1
+if [ $# -eq 1 ];then 
+	input=$1;
+	size=${#input}
+	if [ $size -eq 1 ];then
+		let p="1"
+	else	
+		let p="2*$size-2"
 	fi;
+else
+    echo "Error: Invalid count of arguments! (One argument requiered of type string)"
+	exit 1
 fi;
+
 
 #preklad cpp
 mpic++ --prefix /usr/local/share/OpenMPI -o ${FILENAME} ${FILENAME}.cpp
 
 #spusteni
-mpirun --prefix /usr/local/share/OpenMPI -np $p ${FILENAME}
+mpirun --prefix /usr/local/share/OpenMPI -np $p ${FILENAME} $input
 
 #uklid
-rm -f ${FILENAME} numbers
+rm -f ${FILENAME}
 
