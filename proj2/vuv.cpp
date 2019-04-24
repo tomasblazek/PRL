@@ -296,8 +296,8 @@ int main(int argc, char *argv[]){
     }
    	
    	// free resources
-   	free(succ);
-   	free(val);
+    free(succ);
+    free(val);
 
     MPI_Finalize(); 
     return 0;
