@@ -9,7 +9,6 @@
 #include <iostream>
 #include <fstream>
 #include <vector>           
-#include <algorithm>    /* sort */
 #include <math.h>       /* log2 */
 #include <ctime>
 
@@ -85,7 +84,14 @@ int getFirstElemIndexOfTreeLevel(int level){
     return index;
 }
 
-
+/**
+ * @brief      Determines if is edge foward.
+ *
+ * @param[in]  edgeId  The edge identifier
+ * @param[in]  graph   The graph
+ *
+ * @return     True if edge is foward, False otherwise.
+ */
 bool isEdgeFoward(int edgeId, string graph){
 	int countOfForwardEdges = graph.length() - 1;
 	if (edgeId < countOfForwardEdges){
@@ -95,6 +101,14 @@ bool isEdgeFoward(int edgeId, string graph){
 }
 
 
+/**
+ * @brief      Gets the identifier of entering node.
+ *
+ * @param[in]  edgeId  The edge identifier
+ * @param[in]  graph   The graph
+ *
+ * @return     The identifier of entering node.
+ */
 int getIdOfEnteringNode(int edgeId, string graph){
 	int countOfNodes = graph.length();
 
@@ -105,17 +119,14 @@ int getIdOfEnteringNode(int edgeId, string graph){
 	}
 }
 
-// int getIdOfOutputNode(int edgeId, string graph){
-// 	int countOfNodes = graph.length();
-
-// 	if (!isEdgeFoward(edgeId, graph)){
-// 		return edgeId - (countOfNodes - 1) + 1;
-// 	} else {
-// 		return getParentIndex(edgeId + 1);
-// 	}
-// }
-
-
+/**
+ * @brief      Gets the left child of entering node.
+ *
+ * @param[in]  edgeId  The edge identifier
+ * @param[in]  graph   The graph
+ *
+ * @return     The left child of entering node.
+ */
 int getLeftChildOfEnteringNode(int edgeId, string graph){
 	int childId = getIdOfEnteringNode(edgeId, graph) * 2 + 1;
 	if (childId < graph.length()){
@@ -124,6 +135,15 @@ int getLeftChildOfEnteringNode(int edgeId, string graph){
 	return -1;
 }
 
+
+/**
+ * @brief      Gets the right child of entering node.
+ *
+ * @param[in]  edgeId  The edge identifier
+ * @param[in]  graph   The graph
+ *
+ * @return     The right child of entering node.
+ */
 int getRightChildOfEnteringNode(int edgeId, string graph){
 	int childId = getIdOfEnteringNode(edgeId, graph) * 2 + 2;
 	if (childId < graph.length()){
@@ -132,6 +152,14 @@ int getRightChildOfEnteringNode(int edgeId, string graph){
 	return -1;
 }
 
+/**
+ * @brief      Gets the next edge in Euler Tour.
+ *
+ * @param[in]  edgeId  The edge identifier
+ * @param[in]  graph   The graph
+ *
+ * @return     The next edge.
+ */
 int getNextEdge(int edgeId, string graph){
 	int countOfNodes = graph.length();
 
@@ -156,7 +184,13 @@ int getNextEdge(int edgeId, string graph){
 	return edgeId;
  }
 
-
+/**
+ * @brief      Make Log2 and round up value.
+ *
+ * @param[in]  x     Value
+ *
+ * @return     Return rounded up log2 value
+ */
 int log2RoundUp(float x){
 	return ceil(log2(x));
 }
@@ -182,12 +216,22 @@ int main(int argc, char *argv[]){
 
     string input = argv[1];
 
+    t1 = MPI_Wtime();
+
     if (input.length() < 1){
+    	t2 = MPI_Wtime();
+        if(ANALYZE_TIME){
+            printf("MPI_Wtime measured time: %1.4fms\n", (t2-t1)*1000);
+        }
     	MPI_Finalize();
     	return 0;
     }
 
     if (input.length() == 1){
+    	t2 = MPI_Wtime();
+        if(ANALYZE_TIME){
+            printf("MPI_Wtime measured time: %1.4fms\n", (t2-t1)*1000);
+        }
     	cout << input[0] << ":" << 0 << endl;
     	MPI_Finalize();
     	return 0;
@@ -196,7 +240,7 @@ int main(int argc, char *argv[]){
     int countOfForwardEdges = input.length() - 1;
 
     // SUFFIXSUM
-    // initialize succesor of edge and succesor of succesor of edge with Euler path
+    // initialize succesor of edge and succesor of succesor of edge with Euler tour
     int *succ = (int *) malloc(sizeof(int) * numProcs);
     if (succ == NULL){
     	fprintf(stderr, "Error: Malloc error occured while creating array of succesors!\n");
@@ -235,14 +279,20 @@ int main(int argc, char *argv[]){
     // Correction
     val[myid] += 2;
 
+
     //Print results
-    MPI_Allgather(&val[myid], 1, MPI_INT, val, 1, MPI_INT, MPI_COMM_WORLD);
+    MPI_Gather(&val[myid], 1, MPI_INT, val, 1, MPI_INT, 0, MPI_COMM_WORLD);
     if (myid == 0){
+    	t2 = MPI_Wtime();
     	cout << input[0] << ":" << 0;
     	for (int i = 1; i < input.length(); i++){
     		cout << "," << input[i] << ":" << val[i-1];
     	}
     	cout << endl;
+
+    	if(ANALYZE_TIME){
+        	printf("MPI_Wtime measured time: %1.4fms\n", (t2-t1)*1000);
+        }
     }
    	
    	// free resources
