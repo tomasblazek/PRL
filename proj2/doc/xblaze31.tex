@@ -37,14 +37,13 @@ Poslední krok algoritmu pro výpočet úrovně vrcholu je korekce výsledku, kt
 
 
 \section{Implementace}
-Program je implementován v jazyce C++ s využitím knihovny Open MPI. V samotné implementaci programu se jako první operace inicializuje MPI komunikace a zjistí se informace o tom, kolik procesorů běží, přičemž si každý procesor zjistí svoje identifikační číslo (id). Nejprve si každý procesor (reprezentující hranu) alokuje místo pro pole následníků \texttt{succ} a pole hodnot \texttt{val}. Dále si každý procesor inicializuje v poli následníků pouze index svého následníka a následníka svého následníka (nalezení následníka je popsáno v kapitole\,\ref{sec:rozbor}) a v poli hodnot inicializuje pouze svoji hodnotu (váhu pro zpětnou hranu 1 nebo -1 pro dopřednou). Před začátkem výpočtu samotné sumy suffixů se zavolá z každého procesoru funkce \texttt{MPI\_Allgather} z knihovny MPI, která zašle broadcast své hodnoty \texttt{val[id]} všem ostatním vláknům a uloží je do pole \texttt{val} podle indexů procesorů. Dále přichází na řadu cyklus samotného výpočtu sumy suffixů. Cyklus je proveden $log_{2}(n)$--krát a v každém kroce cyklu se k hodně \texttt{val[id]} přičte hodnota jejího následníka a následník \texttt{succ[id]} se změní na následníka jeho následníka tedy \texttt{succ[succ[id]]}. Na konci každé iterace se zavolá ještě funkce \texttt{MPI\_Allgather}, pro synchronizaci hodnot v polích.
-Při dokončení výpočtu sumy suffixů je v poli \texttt{val} na indexu \texttt{id} výsledná hodnota úrovně uzlu na něž hrana (procesor) s \texttt{id} míří, která ještě musí být zkorigována přičtením jedničky zanedbané ve výpočtu Suffix Sum (jako korekční krok) a ještě jedné jedničky jako korekce samotného algoritmu pro výpočet úrovně vrcholu (ve výsledku tedy ke každé hodnotě +2). Kořen má úroveň implicitně rovnu 0. Na závěr se ještě zašlou zkorigované výsledky do procesoru s \texttt{id} rovnu 0 za pomoci funkce \texttt{MPI\_Gather} a ten vypíše výsledky na standardní výstup (stdout).
+Program je implementován v jazyce C++ s využitím knihovny Open MPI. V samotné implementaci programu se jako první operace inicializuje MPI komunikace a zjistí se informace o tom, kolik procesorů běží, přičemž si každý procesor zjistí svoje identifikační číslo (id). Nejprve si každý procesor (reprezentující hranu) alokuje místo pro pole následníků \texttt{succ} a pole hodnot \texttt{val}. Dále si každý procesor inicializuje v poli následníků pouze index svého následníka a následníka svého následníka (nalezení následníka je popsáno v kapitole\,\ref{sec:rozbor}) a v poli hodnot inicializuje pouze svoji hodnotu (váhu pro zpětnou hranu 1 nebo -1 pro dopřednou). Před začátkem výpočtu samotné sumy suffixů se zavolá z každého procesoru funkce \texttt{MPI\_Allgather} z knihovny MPI, která zašle broadcast své hodnoty \texttt{val[id]} všem ostatním vláknům a uloží je do pole \texttt{val} podle indexů procesorů. Dále přichází na řadu cyklus samotného výpočtu sumy suffixů. Cyklus je proveden $log_{2}(n)$--krát a v každém kroce cyklu se k hodně \texttt{val[id]} přičte hodnota jejího následníka a následník \texttt{succ[id]} se změní na následníka jeho následníka tedy \texttt{succ[succ[id]]}. Na konci každé iterace se zavolá ještě funkce \texttt{MPI\_Allgather}, pro synchronizaci hodnot v polích. Při dokončení výpočtu sumy suffixů je v poli \texttt{val} na indexu \texttt{id} výsledná hodnota úrovně uzlu na něž hrana (procesor) s \texttt{id} míří, která ještě musí být zkorigována přičtením jedničky zanedbané ve výpočtu Suffix Sum (jako korekční krok) a ještě jedné jedničky jako korekce samotného algoritmu pro výpočet úrovně vrcholu (ve výsledku tedy ke každé hodnotě +2). Kořen má úroveň implicitně rovnu 0. Na závěr se ještě zašlou zkorigované výsledky do procesoru s \texttt{id} rovnu 0 za pomoci funkce \texttt{MPI\_Gather} a ten vypíše výsledky na standardní výstup (stdout).
 
 
 \section{Experimenty}
 Nad implementovaným algoritmem byly prováděny experimenty v podobě opakovaného spouštění algoritmu s přidávání jednoho uzlu navíc s každým dalším krokem a byla měřena doba, za níž algoritmus dokončí svůj výpočet. Časové hodnoty byly získány za pomoci funkce přímo z knihovny Open MPI, která vrací čas v sekundách, ale kvůli lepší vizualizaci jsou hodnoty v grafu převedeny na milisekundy. Časové údaje byly při experimentu měřeny pouze pro samotný algoritmus, tedy byl z měření vynechán konečný tisk výsledku na standartní výstup.
 
-\begin{figure}[h]\centering
+\begin{figure}[H]\centering
 	\label{fig:experimenty}
 	\begin{tikzpicture}
 		\begin{axis}[
@@ -86,7 +85,7 @@ Komunikační protokol je znázorněný pomocí sekvenčního diagramu. Ten popi
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.53]{pics/seq.png}
+	\includegraphics[scale=0.25]{pics/seq.png}
 	\caption{Sekvenční diagram komunikace procesorů}	
 \end{figure}
 
