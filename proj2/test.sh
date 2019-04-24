@@ -2,7 +2,7 @@
 
 FILENAME="vuv"
 
-#pocet procesorů bud zadam nebo 16
+
 if [ $# -eq 1 ];then 
 	input=$1;
 	size=${#input}
