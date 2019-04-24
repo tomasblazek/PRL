@@ -295,7 +295,7 @@ int main(int argc, char *argv[]){
         }
     }
    	
-   	// free resources
+    // free resources
     free(succ);
     free(val);
 
