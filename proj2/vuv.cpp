@@ -2,7 +2,7 @@
  * subject: PRL
  * algorithm: Calculate the peak level (Výpočet úrovně vrcholu)
  * author: xblaze31
- * date: 21-03-2019
+ * date: 14-04-2019
  */
 
 #include <mpi.h>
